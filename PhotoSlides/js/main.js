@@ -190,20 +190,74 @@
   document.addEventListener('mouseenter', refresh);
   loadHost().then(function () { setInterval(refresh, 1500); refresh(); });
 
-  /* ---- автожаңарту: панель ашылғанда бір рет тексеріледі ---- */
-  (function update() {
+  /* ---- нұсқалар: ештеңе өздігінен орнатылмайды ---- */
+  var U = function () { return window.__PS_UPD || window.PSUpdate; };
+  var uenv = null, rel = null, local = '0', prefs = {};
+  function updEnv() {
+    if (window.__PS_UPD) return null;
+    if (uenv) return uenv;
+    var req = (window.cep_node && window.cep_node.require) || window.require, fs = req('fs');
+    return (uenv = { fs: fs, path: req('path'), crypto: req('crypto'),
+      Buffer: window.cep_node ? window.cep_node.Buffer : Buffer, dir: fs.realpathSync(extDir) });
+  }
+  function verLabel() { $('ver').textContent = 'v' + local + (prefs.pinned ? ' · бекітілген' : ''); }
+
+  function renderVersions() {
+    var box = $('vers'), list = Object.keys(rel.versions).sort(function (a, b) { return U().newer(a, b) ? -1 : 1; });
+    box.innerHTML = '';
+    list.forEach(function (v) {
+      var m = rel.versions[v], row = document.createElement('div'), b = document.createElement('b'),
+          sm = document.createElement('small'), btn = document.createElement('button');
+      row.className = 'row' + (v === local ? ' cur' : '');
+      b.textContent = v;
+      sm.textContent = (v === rel.latest ? 'соңғы · ' : '') + (m.notes || '');
+      sm.title = sm.textContent;
+      row.appendChild(b); row.appendChild(sm);
+      if (v === local) { sm.textContent = 'қазір · ' + (m.notes || ''); }
+      else {
+        btn.textContent = v === rel.latest ? 'Жаңарту' : 'Орнату';
+        btn.addEventListener('click', function () { doInstall(v); });
+        row.appendChild(btn);
+      }
+      box.appendChild(row);
+    });
+    box.title = 'Ескі нұсқаны орнатсаңыз, ол бекітіледі (жаңарту ұсынылмайды). Соңғысын орнатсаңыз, бекіту алынады.';
+  }
+
+  function showUpdate() {
+    var has = rel && !prefs.pinned && U().newer(rel.latest, local);
+    $('upd').hidden = !has;
+    if (has) $('upd').textContent = 'Жаңарту → ' + rel.latest;
+  }
+
+  function doInstall(v) {
+    if (busy || !rel) return;
+    busy = true; $('go').disabled = true; $('upd').disabled = true;
+    status('Жүктелуде: ' + v + '…');
+    U().install(updEnv(), rel, v).then(function () {
+      prefs.pinned = v !== rel.latest;   // ескі нұсқа — бекітіледі, соңғысы — бекіту алынады
+      U().writePrefs(updEnv(), prefs);
+      try { sessionStorage.setItem('ps-updated', v); } catch (e) { }
+      status('Орнатылды: ' + v + '. Панель қайта жүктеледі…', 'ok');
+      setTimeout(function () { location.reload(); }, 800);
+    }, function (e) {
+      busy = false; $('upd').disabled = false; show(last);
+      status('Орнату мүмкін болмады: ' + (e && e.message ? e.message : e) + '. Бұрынғы нұсқа сақталды.', 'err');
+    });
+  }
+
+  $('ver').addEventListener('click', function () { var b = $('vers'); if (!rel) return; b.hidden = !b.hidden; if (!b.hidden) renderVersions(); });
+  $('upd').addEventListener('click', function () { doInstall(rel.latest); });
+
+  (function updates() {
     try {
-      var req = (window.cep_node && window.cep_node.require) || window.require;
-      var fs = req('fs'), env = { fs: fs, path: req('path'), crypto: req('crypto'),
-        Buffer: window.cep_node ? window.cep_node.Buffer : Buffer, dir: fs.realpathSync(extDir) };
-      window.PSUpdate.check(env).then(function (v) {
-        if (!v) return;
-        try { sessionStorage.setItem('ps-updated', v); } catch (e) { }
-        setTimeout(function () { if (!busy) location.reload(); }, 800);   // файл бақылаушысы да қайта жүктейді
-      }, function () { /* желі жоқ — үнсіз өткіземіз */ });
+      var env = updEnv();
+      local = U().localVersion(env); prefs = U().readPrefs(env);
+      verLabel();
       var done = null;
       try { done = sessionStorage.getItem('ps-updated'); sessionStorage.removeItem('ps-updated'); } catch (e) { }
-      if (done) setTimeout(function () { status('Жаңартылды: ' + done, 'ok'); }, 300);
-    } catch (e) { }
+      if (done) setTimeout(function () { status('Орнатылды: ' + done, 'ok'); }, 300);
+      U().releases().then(function (r) { rel = r; showUpdate(); }, function () { /* желі жоқ — үнсіз */ });
+    } catch (e) { $('ver').hidden = true; }
   })();
 })();

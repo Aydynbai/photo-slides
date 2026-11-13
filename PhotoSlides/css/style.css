@@ -9,7 +9,7 @@ body {
   font: 12px/1.35 -apple-system, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased; user-select: none; cursor: default;
 }
-main { padding: 12px; display: flex; flex-direction: column; gap: 10px; max-width: 420px; margin: 0 auto; }
+main { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; max-width: 420px; margin: 0 auto; }
 
 header { display: flex; align-items: center; gap: 7px; }
 .mark { width: 12px; height: 12px; border: 2px solid var(--accent); background: var(--warm); flex: none; }
@@ -51,7 +51,25 @@ h1 { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 
 .progress { height: 2px; background: transparent; border-radius: 1px; overflow: hidden; margin-top: -4px; }
 .progress i { display: block; height: 100%; width: 0; background: var(--warm); transition: width .15s; }
-.status { color: var(--dim); font-size: 11px; min-height: 15px; user-select: text; }
+.status { color: var(--dim); font-size: 11px; min-height: 14px; margin-top: -4px; user-select: text; }
 .status.err { color: #f08a7c; }
 .status.ok { color: #9fd3a4; }
+
+.foot { display: flex; align-items: center; gap: 8px; margin-top: -4px; }
+.ver, .upd { border: 0; background: transparent; font: inherit; font-size: 11px; cursor: pointer; padding: 3px 0; }
+.ver { color: var(--dim); font-variant-numeric: tabular-nums; }
+.ver:hover { color: var(--text); }
+.upd { margin-left: auto; color: var(--warm); font-weight: 600; }
+.upd:hover { text-decoration: underline; }
+.upd:disabled, .row button:disabled { opacity: .4; cursor: default; }
+.ver:focus-visible, .upd:focus-visible, .row button:focus-visible { outline: 1.5px solid var(--warm); outline-offset: 2px; }
+.vers { background: var(--panel); border-radius: 8px; padding: 3px; display: flex; flex-direction: column; max-height: 96px; overflow-y: auto; margin-top: -4px; }
+.vers .row { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 5px; }
+.vers .row.cur { background: #323236; }
+.row b { font: 600 12px/1.2 ui-monospace, "SF Mono", Consolas, monospace; }
+.row small { color: var(--dim); font-size: 10.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row button { border: 0; border-radius: 5px; background: #3d3d42; color: var(--text); font: inherit; font-size: 11px; padding: 3px 9px; cursor: pointer; }
+.row button:hover:not(:disabled) { background: #4a4a50; }
+.vers .hint { color: var(--dim); font-size: 10.5px; padding: 4px 6px 2px; }
+body { overflow-y: auto; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
