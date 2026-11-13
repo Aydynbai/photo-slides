@@ -1,14 +1,14 @@
 {
-  "version": "1.2.0",
-  "commit": "c29a6b546dbc99b642e8a8a2dadbfb1197af114e",
+  "version": "1.3.0",
+  "commit": "939deb5e0b75c393ca6565189f0e2bec794261dc",
   "files": {
-    "CSXS/manifest.xml": "e5d59d8923fb3707a4e6378c495c7463c51a64a937ecb4042a073b27270b2614",
-    "css/style.css": "95ec1406cafdaf04b8c1d852a6fc92c785c2eedcb729fcd02e5fa29eaac7f846",
-    "index.html": "0512578c5cefaa4fef7b0caef35e6f045b41d65cb5976f87db4bc2f27fe33c34",
-    "js/main.js": "8f351aed770cebaf4e8e5ecee18c4846e19dd8c2851e079ab63ccd95ca060f28",
+    "CSXS/manifest.xml": "e774848ee8c6ad9fe9566f06ec03dc0f1141053a77a6b61afa1ce77172108e7c",
+    "css/style.css": "fb604c39f8dc2bfdc4ea56dcc101a7fb9ad0b1deddd982aa8a318099920aa2dd",
+    "index.html": "9405e5b972627b4753a9ef06c3038013a8ed0ee539be7ded1e9f9704a6468ab7",
+    "js/main.js": "3e1f4ef6778e5c425c98d254857905ada477c1a9c3fc9486b65e24bae6244327",
     "js/plan.js": "dcdb35b986b6b8e4178c261fcc256a87d43392ca8403fee9bcc65ebdc0b5104e",
     "js/render.js": "0b0924ff571a63f5411b44108b5114d33744e31a184d7dffbf5b2cffdbfc58be",
-    "js/update.js": "4b4a08189dcbd22ae03ba0f6bf8253528e3c71bbde3c8ae742c65bad8918e394",
+    "js/update.js": "f4f41eac0e6155ba192731fbbfe5523ff2310cd10c7bf774279acda4936c6810",
     "jsx/host.jsx": "78b648b64804d232eaa5e68db04de1c510013fdcdc176d5f346f7608c9262166"
   }
 }
