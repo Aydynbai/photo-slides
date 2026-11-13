@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<title>Photo Slides</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <header>
+    <span class="mark" aria-hidden="true"></span>
+    <h1>Photo Slides</h1>
+    <span id="seq" class="seq"></span>
+  </header>
+
+  <section class="range" id="range">
+    <div class="tc"><label>In</label><b id="in">--:--:--</b></div>
+    <div class="bar"><i></i></div>
+    <div class="tc right"><label>Out</label><b id="out">--:--:--</b></div>
+  </section>
+
+  <section class="count">
+    <b id="count">0</b>
+    <span id="countLabel">фото</span>
+    <span id="dur" class="dur"></span>
+  </section>
+
+  <section class="motion" role="radiogroup" aria-label="Қозғалыс">
+    <button data-mode="mix" class="on" title="Көлденең, тік, диагональ, зум — кезекпен">Аралас</button>
+    <button data-mode="h" title="Көлденең">↔</button>
+    <button data-mode="v" title="Тік">↕</button>
+    <button data-mode="d" title="Диагональ">⤢</button>
+    <button data-mode="z" title="Жұмсақ зум">Зум</button>
+  </section>
+
+  <button id="go" class="go" disabled>Слайдшоу жасау</button>
+  <div class="progress"><i id="prog"></i></div>
+  <p id="status" class="status"></p>
+</main>
+<script src="js/plan.js"></script>
+<script src="js/render.js"></script>
+<script src="js/update.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
