@@ -14,6 +14,8 @@ main { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; max-
 header { display: flex; align-items: center; gap: 7px; }
 .mark { width: 12px; height: 12px; border: 2px solid var(--accent); background: var(--warm); flex: none; }
 h1 { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.title { display: flex; flex-direction: column; gap: 1px; }
+.by { color: var(--dim); opacity: .6; font-size: 9.5px; letter-spacing: .08em; line-height: 1.1; }
 .seq { margin-left: auto; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%; }
 
 .range { display: flex; align-items: center; gap: 8px; background: var(--panel); border-radius: 8px; padding: 9px 11px; }
