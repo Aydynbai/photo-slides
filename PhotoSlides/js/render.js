@@ -123,13 +123,6 @@
     return c;
   }
 
-  function white(W, H) {
-    var c = canvas(W, H), g = c.getContext('2d');
-    g.fillStyle = '#ffffff';
-    g.fillRect(0, 0, W, H);
-    return c;
-  }
-
   root.PSRender = { exifOrientation: exifOrientation, supported: supported, loadImage: loadImage, background: background,
-                    framed: framed, white: white, toBytes: toBytes };
+                    framed: framed, toBytes: toBytes };
 })(typeof window !== 'undefined' ? window : this);

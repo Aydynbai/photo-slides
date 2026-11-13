@@ -130,22 +130,17 @@
       return chain.then(function () {
         if (!used.length) throw new Error('Фотолар оқылмады (JPG, PNG, WebP қолдайды)');
         if (made) f.writeText(idxPath, JSON.stringify(index));
-        var whiteName = 'PS_flash_' + W + 'x' + H + '.png';
-        var ready = f.exists(f.join(dir, whiteName)) ? Promise.resolve() :
-          R.toBytes(R.white(W, H), 'image/png').then(function (b) { f.write(f.join(dir, whiteName), b); });
-        return ready.then(function () {
-          add(whiteName);
-          var plan = P.build(used, { W: W, H: H, fps: i.fps }, mode);
-          plan.items.forEach(function (it, k) { it.bg = used[k].bg; it.fg = used[k].fg; delete it.layout; });
-          status('Таймлайнға қойылуда…'); progress(0.85);
-          return host('PS_build(' + lit({ inS: i.inS, outS: i.outS, track: i.track, files: files,
-            white: whiteName, items: plan.items, flashes: plan.flashes }) + ')');
-        });
+        var plan = P.build(used, { W: W, H: H, fps: i.fps }, mode);
+        plan.items.forEach(function (it, k) { it.bg = used[k].bg; it.fg = used[k].fg; delete it.layout; });
+        status('Таймлайнға қойылуда…'); progress(0.85);
+        return host('PS_build(' + lit({ inS: i.inS, outS: i.outS, track: i.track, files: files,
+          items: plan.items, dips: plan.dips }) + ')');
       });
     }).then(function (res) {
       if (!res.ok) throw new Error(res.err || 'Белгісіз қате');
       progress(1);
       status('Дайын: ' + res.placed + ' слайд · V' + res.tracks.join(', V') +
+             (res.missedDips ? ' · Dip to White қосылмады: ' + res.missedDips : '') +
              (skipped ? ' · ' + skipped + ' фото өткізілді (формат)' : ''), 'ok');
     }).catch(function (e) {
       progress(0);

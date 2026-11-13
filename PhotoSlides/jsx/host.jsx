@@ -86,7 +86,7 @@ function PS_trackFree(track, a, b) {
 
 function PS_freeTracks(seq, above, a, b) {
     var out = [], t;
-    for (t = above + 1; t < seq.videoTracks.numTracks && out.length < 3; t++) {
+    for (t = above + 1; t < seq.videoTracks.numTracks && out.length < 2; t++) {
         if (PS_trackFree(seq.videoTracks[t], a, b)) { out.push(t); }
     }
     return out;
@@ -209,6 +209,30 @@ function PS_tidy(bin) {
     return moved;
 }
 
+function PS_addDips(trackIndex, dips, timebase) {
+    if (!dips.length) { return 0; }
+    var track, transition, i, item, count = 0, byStart = {};
+    try {
+        app.enableQE();
+        track = qe.project.getActiveSequence().getVideoTrackAt(trackIndex);
+        try { transition = qe.project.getVideoTransitionByName('AE.ADBE Dip To White', true); } catch (e) { }
+        if (!transition) { transition = qe.project.getVideoTransitionByName('Dip to White'); }
+        if (!transition) { return 0; }
+        for (i = 0; i < track.numItems; i++) {
+            item = track.getItemAt(i);
+            if (item && item.type === 'Clip' && item.start) { byStart[Math.round(Number(item.start.ticks) / timebase)] = item; }
+        }
+    } catch (eTrack) { return 0; }
+    for (i = 0; i < dips.length; i++) {
+        item = byStart[Math.round(dips[i].cut * PS_TICKS / timebase)];
+        if (!item) { continue; }
+        try {
+            if (item.addTransition(transition, true, String(dips[i].frames), '0', 0.5) !== false) { count++; }
+        } catch (eTransition) { }
+    }
+    return count;
+}
+
 function PS_build(plan) {
     try {
         var seq = app.project.activeSequence;
@@ -226,14 +250,14 @@ function PS_build(plan) {
             }
         }
 
-        /* 2. Фотолардың үстінен үш бос трек: фон, фото, жарқыл. */
+        /* 2. Фотолардың үстінен екі бос трек: фон және фото. */
         var free = PS_freeTracks(seq, plan.track, a, b);
-        if (free.length < 3) {
-            PS_addTracks(seq, 3 - free.length);
+        if (free.length < 2) {
+            PS_addTracks(seq, 2 - free.length);
             free = PS_freeTracks(seq, plan.track, a, b);
         }
-        if (free.length < 3) {
-            return PS_str({ ok: false, err: 'Фотолардың үстіне ' + (3 - free.length) + ' бос видео трек қосыңыз' });
+        if (free.length < 2) {
+            return PS_str({ ok: false, err: 'Фотолардың үстіне ' + (2 - free.length) + ' бос видео трек қосыңыз' });
         }
 
         /* 3. Дайын суреттерді жобаға импорттау. */
@@ -252,8 +276,8 @@ function PS_build(plan) {
         }
 
         /* 4. Таймлайнға қою. */
-        var tBg = seq.videoTracks[free[0]], tFg = seq.videoTracks[free[1]], tFl = seq.videoTracks[free[2]];
-        var it, bg, fg, motion, placed = 0, fl, op;
+        var tBg = seq.videoTracks[free[0]], tFg = seq.videoTracks[free[1]];
+        var it, bg, fg, motion, placed = 0;
         for (i = 0; i < plan.items.length; i++) {
             it = plan.items[i];
             if (!items[it.bg] || !items[it.fg]) { continue; }
@@ -268,21 +292,11 @@ function PS_build(plan) {
             PS_animate(fg, motion.properties[1], [[0, it.sc[0]], [d, it.sc[1]]]);
             placed++;
         }
-        var flashes = 0;
-        if (items[plan.white]) {
-            for (i = 0; i < plan.flashes.length; i++) {
-                fl = plan.flashes[i];
-                clip = PS_place(tFl, items[plan.white], fl.start, fl.end);
-                if (!clip) { continue; }
-                op = PS_component(clip, 'AE.ADBE Opacity', 0);
-                PS_animate(clip, op.properties[0], fl.keys);
-                flashes++;
-            }
-        }
+        var dips = PS_addDips(free[1], plan.dips, Number(seq.timebase));
         var stale = 0;
         try { stale = PS_tidy(bin); } catch (eT) { }
         return PS_str({ ok: placed > 0, err: placed ? '' : 'Клиптер таймлайнға қойылмады', stale: stale,
-                        placed: placed, flashes: flashes, tracks: [free[0] + 1, free[1] + 1, free[2] + 1] });
+                        placed: placed, missedDips: plan.dips.length - dips, tracks: [free[0] + 1, free[1] + 1] });
     } catch (err) {
         return PS_str({ ok: false, err: String(err) + (err && err.line ? ' (' + err.line + ')' : '') });
     }
