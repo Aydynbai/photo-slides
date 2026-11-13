@@ -1,5 +1,5 @@
 {
-  "latest": "1.3.3",
+  "latest": "1.3.4",
   "versions": {
     "1.2.0": {
       "commit": "c29a6b546dbc99b642e8a8a2dadbfb1197af114e",
@@ -74,6 +74,21 @@
         "js/render.js": "3df4351b27786d8677f3cd024ed0e3f6b2501b549ca00d0aaa4eea3bce976389",
         "js/update.js": "f4f41eac0e6155ba192731fbbfe5523ff2310cd10c7bf774279acda4936c6810",
         "jsx/host.jsx": "5355f1242bdeb26808a240c6e8c37df0f0298322df1f56956e7899227f35de77"
+      }
+    },
+    "1.3.4": {
+      "commit": "1604895f4914425314efd28df2cf4d0027d2e5d0",
+      "date": "2026-11-13",
+      "notes": "GO / STOP, таймлайнды қорғау және жеңіл фон",
+      "files": {
+        "CSXS/manifest.xml": "d981e6093405ed18a6f005118d09e67a3a52df9381630ca7946bf17f8c0278ce",
+        "css/style.css": "a3b36b3d5ed32b4aeabbc4b57414ca11a8d5ec713789797bbdc4fbbb68a0c8e0",
+        "index.html": "e8c0db298e1a0ddf287b39dfd21da62880000e79f7a53cbfc856ec9ad824ccdb",
+        "js/main.js": "d1d31f9f16b8e3dee777863553671a29fb488bb3531ec3374e92d82b3c12d33a",
+        "js/plan.js": "4030c51aee80d379d18e29c754fb752223837609d15de49b46d2b9cf51c0a310",
+        "js/render.js": "8c52c5540e2fda97bf03a4edc2c5967cc6c28d1db0753031dec92b2a6390cb00",
+        "js/update.js": "f4f41eac0e6155ba192731fbbfe5523ff2310cd10c7bf774279acda4936c6810",
+        "jsx/host.jsx": "644cb29a80f9e7171bad6f2a61abd4ef48345fcbe5cec434c533d09928a3d402"
       }
     }
   }
