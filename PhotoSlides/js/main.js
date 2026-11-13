@@ -192,7 +192,7 @@
 
   /* ---- нұсқалар: ештеңе өздігінен орнатылмайды ---- */
   var U = function () { return window.__PS_UPD || window.PSUpdate; };
-  var uenv = null, rel = null, local = '0', prefs = {};
+  var uenv = null, rel = null, local = '0', prefs = {}, checking = null;
   function updEnv() {
     if (window.__PS_UPD) return null;
     if (uenv) return uenv;
@@ -210,11 +210,11 @@
           sm = document.createElement('small'), btn = document.createElement('button');
       row.className = 'row' + (v === local ? ' cur' : '');
       b.textContent = v;
-      sm.textContent = (v === rel.latest ? 'соңғы · ' : '') + (m.notes || '');
+      var label = v === local ? 'қазір' : v === rel.latest ? 'соңғы' : '';
+      sm.textContent = [label, m.notes].filter(Boolean).join(' · ');
       sm.title = sm.textContent;
       row.appendChild(b); row.appendChild(sm);
-      if (v === local) { sm.textContent = 'қазір · ' + (m.notes || ''); }
-      else {
+      if (v !== local) {
         btn.textContent = v === rel.latest ? 'Жаңарту' : 'Орнату';
         btn.addEventListener('click', function () { doInstall(v); });
         row.appendChild(btn);
@@ -230,12 +230,47 @@
     if (has) $('upd').textContent = 'Жаңарту → ' + rel.latest;
   }
 
+  function checkStatus(message) {
+    $('checkStatus').textContent = message;
+    $('checkStatus').hidden = !message;
+  }
+
+  function checkUpdates(manual) {
+    if (manual) {
+      $('check').disabled = true;
+      checkStatus('Тексерілуде…');
+    }
+    if (!checking) {
+      checking = U().releases().then(function (r) {
+        rel = r;
+        $('ver').disabled = false;
+        showUpdate();
+        if (!$('vers').hidden) renderVersions();
+      });
+      var clear = function () { checking = null; };
+      checking.then(clear, clear);
+    }
+    if (!manual) return;
+    checking.then(function () {
+      $('check').disabled = false;
+      if (U().newer(rel.latest, local)) {
+        checkStatus('Жаңа нұсқа: ' + rel.latest + (prefs.pinned ? ' · Нұсқалар тізімінен орнатуға болады.' : ''));
+      } else {
+        checkStatus('Сізде соңғы нұсқа орнатылған.');
+      }
+    }, function () {
+      $('check').disabled = false;
+      checkStatus('Жаңартуды тексеру мүмкін болмады. Қайталап көріңіз.');
+    });
+  }
+
   function doInstall(v) {
     if (busy || !rel) return;
+    var latest = rel.latest;
     busy = true; $('go').disabled = true; $('upd').disabled = true;
     status('Жүктелуде: ' + v + '…');
     U().install(updEnv(), rel, v).then(function () {
-      prefs.pinned = v !== rel.latest;   // ескі нұсқа — бекітіледі, соңғысы — бекіту алынады
+      prefs.pinned = v !== latest;   // ескі нұсқа — бекітіледі, соңғысы — бекіту алынады
       U().writePrefs(updEnv(), prefs);
       try { sessionStorage.setItem('ps-updated', v); } catch (e) { }
       status('Орнатылды: ' + v + '. Панель қайта жүктеледі…', 'ok');
@@ -246,7 +281,14 @@
     });
   }
 
-  $('ver').addEventListener('click', function () { var b = $('vers'); if (!rel) return; b.hidden = !b.hidden; if (!b.hidden) renderVersions(); });
+  $('ver').addEventListener('click', function () {
+    if (!rel) return;
+    var box = $('vers');
+    box.hidden = !box.hidden;
+    this.setAttribute('aria-expanded', String(!box.hidden));
+    if (!box.hidden) renderVersions();
+  });
+  $('check').addEventListener('click', function () { checkUpdates(true); });
   $('upd').addEventListener('click', function () { doInstall(rel.latest); });
 
   (function updates() {
@@ -257,7 +299,7 @@
       var done = null;
       try { done = sessionStorage.getItem('ps-updated'); sessionStorage.removeItem('ps-updated'); } catch (e) { }
       if (done) setTimeout(function () { status('Орнатылды: ' + done, 'ok'); }, 300);
-      U().releases().then(function (r) { rel = r; showUpdate(); }, function () { /* желі жоқ — үнсіз */ });
-    } catch (e) { $('ver').hidden = true; }
+      checkUpdates(false);
+    } catch (e) { $('ver').hidden = true; $('check').hidden = true; }
   })();
 })();

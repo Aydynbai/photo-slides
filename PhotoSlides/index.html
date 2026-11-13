@@ -38,9 +38,11 @@
   <p id="status" class="status"></p>
 
   <footer class="foot">
-    <button id="ver" class="ver" title="Нұсқалар">v–</button>
+    <button id="ver" class="ver" type="button" title="Нұсқалар" aria-controls="vers" aria-expanded="false" disabled>v–</button>
+    <button id="check" class="check" type="button">Жаңартуды тексеру</button>
     <button id="upd" class="upd" hidden></button>
   </footer>
+  <p id="checkStatus" class="check-status" role="status" hidden></p>
   <section id="vers" class="vers" hidden></section>
 </main>
 <script src="js/plan.js"></script>
