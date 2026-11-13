@@ -45,7 +45,7 @@ h1 { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 
 .go {
   height: 36px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink);
-  font: 600 13px/1 inherit; font-family: inherit; cursor: pointer; transition: transform .08s, opacity .15s, background .15s;
+  font: inherit; font-size: 13px; font-weight: 600; line-height: 1; cursor: pointer; transition: transform .08s, opacity .15s, background .15s;
 }
 .go:hover:not(:disabled) { background: #fff; }
 .go:active:not(:disabled) { transform: scale(.985); }

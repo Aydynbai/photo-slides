@@ -50,17 +50,21 @@
   }
 
   function loadImage(io, path) {
-    return new Promise(function (resolve, reject) {
-      var url, o = 1;
-      try {
-        var bytes = io.read(path);
-        if (!autoRotates() || root.__PS_FORCE_EXIF) o = exifOrientation(bytes);
-        url = URL.createObjectURL(new Blob([bytes], { type: MIME[ext(path)] }));
-      } catch (e) { reject(e); return; }
-      var img = new Image();
-      img.onload = function () { resolve({ img: o > 1 ? upright(img, o) : img, url: url }); };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('decode')); };
-      img.src = url;
+    return Promise.resolve().then(function () { return io.read(path); }).then(function (bytes) {
+      return new Promise(function (resolve, reject) {
+        var url, o = 1;
+        try {
+          if (!autoRotates() || root.__PS_FORCE_EXIF) o = exifOrientation(bytes);
+          url = URL.createObjectURL(new Blob([bytes], { type: MIME[ext(path)] }));
+        } catch (e) { reject(e); return; }
+        var img = new Image();
+        img.onload = function () {
+          try { resolve({ img: o > 1 ? upright(img, o) : img, url: url }); }
+          catch (err) { URL.revokeObjectURL(url); reject(err); }
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('decode')); };
+        img.src = url;
+      });
     });
   }
 
@@ -90,7 +94,7 @@
 
   /* Фон: сол фотоның үлкейтілген, бұлыңғыр көшірмесі. Кішірейтіп барып
      созу — кез келген өлшемде жылдам әрі тегіс бұлыңғырлық береді. */
-  function background(img, W, H) {
+  function background(img, W, H, divisor) {
     var sw = Math.max(32, Math.round(W / 24)), sh = Math.max(32, Math.round(H / 24));
     var s = canvas(sw, sh), sg = s.getContext('2d');
     sg.imageSmoothingQuality = 'high';
@@ -99,11 +103,11 @@
     var m = canvas(Math.round(W / 4), Math.round(H / 4)), mg = m.getContext('2d');
     mg.imageSmoothingQuality = 'high';
     mg.drawImage(s, 0, 0, m.width, m.height);
-    var c = canvas(W, H), g = c.getContext('2d');
+    var c = divisor === 4 ? m : canvas(W, H), g = c.getContext('2d');
     g.imageSmoothingQuality = 'high';
-    g.drawImage(m, 0, 0, W, H);
+    if (c !== m) g.drawImage(m, 0, 0, c.width, c.height);
     g.fillStyle = 'rgba(0,0,0,0.14)';
-    g.fillRect(0, 0, W, H);
+    g.fillRect(0, 0, c.width, c.height);
     return c;
   }
 

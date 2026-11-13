@@ -25,8 +25,36 @@ function PS_str(v) {
     return '{' + a.join(',') + '}';
 }
 
-function PS_isOurs(clip) {
-    return clip && clip.projectItem && String(clip.projectItem.name).indexOf('PS_') === 0;
+function PS_isOurs(clip, owned) {
+    return clip && clip.projectItem && owned[clip.projectItem.nodeId] === true;
+}
+
+function PS_owned() {
+    var owned = {}, roots = app.project.rootItem.children, i, j, k, bin, child;
+    for (i = 0; i < roots.numItems; i++) {
+        bin = roots[i];
+        if (bin.type !== 2 || bin.name !== 'Photo Slides') { continue; }
+        for (j = 0; j < bin.children.numItems; j++) {
+            child = bin.children[j];
+            if (child.type === 2 && child.name === 'Unused') {
+                for (k = 0; k < child.children.numItems; k++) { PS_markOwned(child.children[k], owned); }
+            } else { PS_markOwned(child, owned); }
+        }
+    }
+    return owned;
+}
+
+function PS_mediaPath(path) {
+    var normalized = String(path).replace(/\\/g, '/');
+    return /^[A-Za-z]:\//.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+function PS_markOwned(item, owned) {
+    if (item.type === 2) { return; }
+    var path = PS_mediaPath(item.getMediaPath());
+    if (/\/Photo Slides Media\/PS_(?:[a-f0-9]{8}_(?:bg4?\.jpg|photo\.png)|(?:flash|ink)_\d+x\d+\.png)$/i.test(path)) {
+        owned[item.nodeId] = true;
+    }
 }
 
 function PS_isPhoto(path) {
@@ -47,6 +75,7 @@ function PS_info() {
         var seq = app.project.activeSequence;
         if (!seq) { return PS_str({ ok: false, err: 'noseq' }); }
         var r = PS_range(seq), eps = 0.0005;
+        var owned = PS_owned();
         var best = [], bestTrack = -1, t, c, track, clip, list, path, s, e;
         for (t = 0; t < seq.videoTracks.numTracks; t++) {
             track = seq.videoTracks[t];
@@ -55,7 +84,7 @@ function PS_info() {
                 clip = track.clips[c];
                 s = Number(clip.start.seconds); e = Number(clip.end.seconds);
                 if (e <= r.inS + eps || s >= r.outS - eps) { continue; }
-                if (!clip.projectItem || PS_isOurs(clip)) { continue; }
+                if (!clip.projectItem || PS_isOurs(clip, owned)) { continue; }
                 path = clip.projectItem.getMediaPath();
                 if (!path || !PS_isPhoto(path)) { continue; }
                 list.push({ start: Math.max(s, r.inS), end: Math.min(e, r.outS), path: String(path) });
@@ -63,7 +92,7 @@ function PS_info() {
             if (list.length > best.length) { best = list; bestTrack = t; }
         }
         return PS_str({
-            ok: true, seqName: String(seq.name), projPath: String(app.project.path),
+            ok: true, seqId: String(seq.sequenceID), seqName: String(seq.name), projPath: String(app.project.path),
             W: Number(seq.frameSizeHorizontal), H: Number(seq.frameSizeVertical),
             fps: PS_TICKS / Number(seq.timebase), zero: Number(seq.zeroPoint) / PS_TICKS,
             inS: r.inS, outS: r.outS, hasInOut: r.set, track: bestTrack, photos: best
@@ -87,7 +116,7 @@ function PS_trackFree(track, a, b) {
 function PS_freeTracks(seq, above, a, b) {
     var out = [], t;
     for (t = above + 1; t < seq.videoTracks.numTracks && out.length < 2; t++) {
-        if (PS_trackFree(seq.videoTracks[t], a, b)) { out.push(t); }
+        if (!(seq.videoTracks[t].isLocked && seq.videoTracks[t].isLocked()) && PS_trackFree(seq.videoTracks[t], a, b)) { out.push(t); }
     }
     return out;
 }
@@ -106,10 +135,13 @@ function PS_addTracks(seq, n) {
 }
 
 function PS_clipAt(track, start) {
-    var c, clip;
-    for (c = 0; c < track.clips.numItems; c++) {
-        clip = track.clips[c];
-        if (Math.abs(Number(clip.start.seconds) - start) < 0.01) { return clip; }
+    var low = 0, high = track.clips.numItems - 1, middle, clip, delta;
+    while (low <= high) {
+        middle = Math.floor((low + high) / 2);
+        clip = track.clips[middle];
+        delta = Number(clip.start.seconds) - start;
+        if (Math.abs(delta) < 0.0005) { return clip; }
+        if (delta < 0) { low = middle + 1; } else { high = middle - 1; }
     }
     return null;
 }
@@ -179,36 +211,6 @@ function PS_index(bin, items) {
     }
 }
 
-/* Ешбір секвенцияда қолданылмай қалған Photo Slides суреттерін бөлек қалтаға жинайды
-   (жобадан өшірмейді — оны пайдаланушы өзі шешеді). */
-function PS_tidy(bin) {
-    var used = {}, s, t, c, seq, track, i, moved = 0, old = null, list = [];
-    for (s = 0; s < app.project.sequences.numSequences; s++) {
-        seq = app.project.sequences[s];
-        for (t = 0; t < seq.videoTracks.numTracks; t++) {
-            track = seq.videoTracks[t];
-            for (c = 0; c < track.clips.numItems; c++) {
-                if (PS_isOurs(track.clips[c])) { used[String(track.clips[c].projectItem.name)] = true; }
-            }
-        }
-    }
-    for (i = 0; i < bin.children.numItems; i++) {
-        if (bin.children[i].type !== 2 && !used[String(bin.children[i].name)]) { list.push(bin.children[i]); }
-    }
-    for (i = 0; i < bin.children.numItems; i++) {
-        if (bin.children[i].type === 2 && bin.children[i].name === 'Unused') { old = bin.children[i]; }
-    }
-    if (old) {   // қайта қолданысқа түскендерін кері қайтару
-        var back = [];
-        for (i = 0; i < old.children.numItems; i++) { if (used[String(old.children[i].name)]) { back.push(old.children[i]); } }
-        for (i = 0; i < back.length; i++) { back[i].moveBin(bin); }
-    }
-    if (!list.length) { return 0; }
-    if (!old) { old = bin.createBin('Unused'); }
-    for (i = 0; i < list.length; i++) { list[i].moveBin(old); moved++; }
-    return moved;
-}
-
 function PS_addDips(trackIndex, dips, timebase) {
     if (!dips.length) { return 0; }
     var track, transition, i, item, count = 0, byStart = {};
@@ -234,70 +236,106 @@ function PS_addDips(trackIndex, dips, timebase) {
 }
 
 function PS_build(plan) {
+    var inserted = [], disabled = [];
     try {
-        var seq = app.project.activeSequence;
-        if (!seq) { return PS_str({ ok: false, err: 'Секвенция ашық емес' }); }
-        var a = plan.inS, b = plan.outS, t, c, track, clip, i, eps = 0.0005;
-
-        /* 1. Осы аралықтағы бұрынғы Photo Slides клиптерін алып тастау (қайта жасағанда қабаттаспасын). */
+        var source = plan.source, seq = app.project.activeSequence;
+        var current = PS_info();
+        if (!seq || current !== PS_str(source)) {
+            return PS_str({ ok: false, err: 'Секвенция немесе фото аралығы өзгерді. GO батырмасын қайта басыңыз.' });
+        }
+        var a = source.inS, b = source.outS, above = source.track, owned = PS_owned();
+        var t, c, track, clip, i, start, end, old = [], eps = 0.0005;
         for (t = 0; t < seq.videoTracks.numTracks; t++) {
             track = seq.videoTracks[t];
-            for (c = track.clips.numItems - 1; c >= 0; c--) {
+            for (c = 0; c < track.clips.numItems; c++) {
                 clip = track.clips[c];
-                if (PS_isOurs(clip) && Number(clip.end.seconds) > a + eps && Number(clip.start.seconds) < b - eps) {
-                    clip.remove(false, false);
+                if (!PS_isOurs(clip, owned) || clip.disabled) { continue; }
+                start = Number(clip.start.seconds); end = Number(clip.end.seconds);
+                if (end <= a + eps || start >= b - eps) { continue; }
+                above = Math.max(above, t);
+                if (start >= a - eps && end <= b + eps && !(track.isLocked && track.isLocked())) {
+                    old.push(clip);
                 }
             }
         }
 
-        /* 2. Фотолардың үстінен екі бос трек: фон және фото. */
-        var free = PS_freeTracks(seq, plan.track, a, b);
-        if (free.length < 2) {
-            PS_addTracks(seq, 2 - free.length);
-            free = PS_freeTracks(seq, plan.track, a, b);
-        }
-        if (free.length < 2) {
-            return PS_str({ ok: false, err: 'Фотолардың үстіне ' + (2 - free.length) + ' бос видео трек қосыңыз' });
-        }
-
-        /* 3. Дайын суреттерді жобаға импорттау. */
-        /* Жобада бар сурет қайта импортталмайды — қайта жасағанда көшірме жиналмайды. */
         var bin = PS_bin('Photo Slides');
         var items = {}, need = [];
         PS_index(bin, items);
         for (i = 0; i < plan.files.length; i++) {
-            if (!items[plan.files[i].name]) { need.push(plan.files[i].path); }
+            var file = plan.files[i];
+            if (!items[file.name]) { need.push(file.path); }
+            else if (PS_mediaPath(items[file.name].getMediaPath()) !== PS_mediaPath(file.path)) {
+                throw new Error('Photo Slides Media файлының жолы сәйкес келмейді');
+            }
         }
         if (need.length) {
-            if (!app.project.importFiles(need, true, bin, false)) {
-                return PS_str({ ok: false, err: 'Суреттер импортталмады' });
-            }
+            if (!app.project.importFiles(need, true, bin, false)) { throw new Error('Суреттер импортталмады'); }
             PS_index(bin, items);
         }
+        for (i = 0; i < plan.items.length; i++) {
+            if (!items[plan.items[i].bg] || !items[plan.items[i].fg]) { throw new Error('Дайын фото табылмады'); }
+        }
 
-        /* 4. Таймлайнға қою. */
+        var free = PS_freeTracks(seq, above, a, b);
+        if (free.length < 2) {
+            PS_addTracks(seq, 2 - free.length);
+            free = PS_freeTracks(seq, above, a, b);
+        }
+        if (free.length < 2) { throw new Error('Фотолардың үстіне екі бос видео трек қажет'); }
+
         var tBg = seq.videoTracks[free[0]], tFg = seq.videoTracks[free[1]];
-        var it, bg, fg, motion, placed = 0;
+        var it, bg, fg, motion;
         for (i = 0; i < plan.items.length; i++) {
             it = plan.items[i];
-            if (!items[it.bg] || !items[it.fg]) { continue; }
             bg = PS_place(tBg, items[it.bg], it.start, it.end);
+            if (bg) { inserted.push(bg); }
             fg = PS_place(tFg, items[it.fg], it.start, it.end);
-            if (!bg || !fg) { continue; }
-            var d = it.end - it.start;
+            if (fg) { inserted.push(fg); }
+            if (!bg || !fg || Math.abs(Number(bg.end.seconds) - it.end) > eps ||
+                Math.abs(Number(fg.end.seconds) - it.end) > eps) {
+                throw new Error('Клиптер таймлайнға толық қойылмады');
+            }
+            var d = it.end - it.start, factor = it.bgFactor || 1;
             motion = PS_component(bg, 'AE.ADBE Motion', 1);
-            PS_animate(bg, motion.properties[1], [[0, it.bgSc[0]], [d, it.bgSc[1]]]);
+            PS_animate(bg, motion.properties[1], [[0, it.bgSc[0] * factor], [d, it.bgSc[1] * factor]]);
             motion = PS_component(fg, 'AE.ADBE Motion', 1);
             PS_animate(fg, motion.properties[0], [[0, it.pos[0]], [d, it.pos[1]]]);
             PS_animate(fg, motion.properties[1], [[0, it.sc[0]], [d, it.sc[1]]]);
-            placed++;
         }
         var dips = PS_addDips(free[1], plan.dips, Number(seq.timebase));
-        var stale = 0;
-        try { stale = PS_tidy(bin); } catch (eT) { }
-        return PS_str({ ok: placed > 0, err: placed ? '' : 'Клиптер таймлайнға қойылмады', stale: stale,
-                        placed: placed, missedDips: plan.dips.length - dips, tracks: [free[0] + 1, free[1] + 1] });
+        var coverage = [], span;
+        for (i = 0; i < plan.items.length; i++) {
+            it = plan.items[i];
+            span = coverage[coverage.length - 1];
+            if (span && it.start <= span.end + eps) { span.end = Math.max(span.end, it.end); }
+            else { coverage.push({ start: it.start, end: it.end }); }
+        }
+        for (i = 0; i < old.length; i++) {
+            clip = old[i];
+            start = Number(clip.start.seconds); end = Number(clip.end.seconds);
+            for (c = 0; c < coverage.length; c++) {
+                if (coverage[c].start > start + eps) { break; }
+                if (coverage[c].end >= end - eps) {
+                    disabled.push(clip);
+                    clip.disabled = true;
+                    if (!clip.disabled) { throw new Error('Бұрынғы клипті уақытша өшіру мүмкін болмады'); }
+                    break;
+                }
+            }
+        }
+        return PS_str({ ok: true, placed: plan.items.length, missedDips: plan.dips.length - dips,
+                        tracks: [free[0] + 1, free[1] + 1] });
     } catch (err) {
-        return PS_str({ ok: false, err: String(err) + (err && err.line ? ' (' + err.line + ')' : '') });
+        var recovered = true, j;
+        for (j = disabled.length - 1; j >= 0; j--) {
+            try { disabled[j].disabled = false; if (disabled[j].disabled) { recovered = false; } }
+            catch (eRestore) { recovered = false; }
+        }
+        for (j = inserted.length - 1; j >= 0; j--) {
+            try { if (inserted[j].remove(false, false) !== 0) { recovered = false; } }
+            catch (eRemove) { recovered = false; }
+        }
+        return PS_str({ ok: false, err: String(err) + (recovered ? '' : ' · Таймлайнды тексеріңіз') });
     }
 }
